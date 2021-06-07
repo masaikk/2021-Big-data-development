@@ -199,7 +199,7 @@ public class MultipartFileHandler {
 
     }
 
-    public static void continuteUploadMultipartFile(AmazonS3 s3, Path filePath) throws IOException {
+    public static void continueUploadMultipartFile(AmazonS3 s3, Path filePath) throws IOException {
         final String bucketName = GetProperties.getValueByKey("config.properties", "bucketName");
         final String uploadId=GetProperties.getValueByKey("config.properties", "multipartFileID");
         long partSize = Integer.parseInt(Objects.requireNonNull(GetProperties.getValueByKey("config.properties", "multipartFilePartLength"))) << 20;
@@ -252,5 +252,62 @@ public class MultipartFileHandler {
 
 
 
+    }
+
+    public static void continueDownloadMultipartFile(AmazonS3 s3,String savePath,String keyName) throws IOException {
+        final String bucketName= GetProperties.getValueByKey("config.properties", "bucketName");
+        final String downloadId=GetProperties.getValueByKey("config.properties", "multipartFileID");
+        final String filePath=Paths.get(savePath,keyName).toString();
+        long partSize = Integer.parseInt(Objects.requireNonNull(GetProperties.getValueByKey("config.properties", "multipartFilePartLength"))) << 20;
+        File downloadFile=new File(filePath);
+        S3Object o=null;
+        S3ObjectInputStream s3is=null;
+        FileOutputStream fos=null;
+
+        // Step 1: Initialize.
+        ObjectMetadata oMetaData = s3.getObjectMetadata(bucketName, keyName);
+        final long contentLength = oMetaData.getContentLength();
+        final GetObjectRequest downloadRequest =
+                new GetObjectRequest(bucketName, keyName);
+
+        fos = new FileOutputStream(downloadFile);
+
+        int nowingSize= (int) (downloadFile.length()/partSize);
+
+        // Step 2: Download parts.
+        long filePosition = downloadFile.length();
+        for (int i = nowingSize+1; filePosition < contentLength; i++) {
+            // Last part can be less than 5 MB. Adjust part size. 5 can be set in config.properties.
+            partSize = Math.min(partSize, contentLength - filePosition);
+
+            // Create request to download a part.
+            downloadRequest.setRange(filePosition, filePosition + partSize);
+            o = s3.getObject(downloadRequest);
+
+            // download part and save to local file.
+            System.out.format("Downloading part %d\n", i);
+
+            filePosition += partSize+1;
+            s3is = o.getObjectContent();
+            byte[] read_buf = new byte[64 * 1024];
+            int read_len = 0;
+            while ((read_len = s3is.read(read_buf)) > 0) {
+                fos.write(read_buf, 0, read_len);
+            }
+        }
+
+        // Step 3: Complete.
+        System.out.println("Completing download");
+
+        System.out.format("save %s to %s\n", keyName, filePath);
+        GetProperties.writeProperties("config.properties", "multipartFileStatus", "0");
+
+
+
+
+
+
+
+        GetProperties.writeProperties("config.properties", "multipartFileStatus", "0");
     }
 }

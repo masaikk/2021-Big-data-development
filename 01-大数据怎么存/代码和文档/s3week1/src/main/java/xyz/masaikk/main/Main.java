@@ -59,11 +59,11 @@ public class Main {
         for (S3ObjectSummary os : objects) {
             System.out.println("* " + os.getKey());
         }*/
-        uploadFilesFromPath(bucketName, fileFolderPath, s3);
+
         /*deleteFilesFromPath(bucketName, fileFolderPath, s3);
         renewFilesFromPath(bucketName, fileFolderPath, s3);*/
         updateFromS3(bucketName, fileFolderPath, s3);
-
+        uploadFilesFromPath(bucketName, fileFolderPath, s3);
         WatchFile.startWatch(s3, fileFolderPath);
 
     }
@@ -73,7 +73,7 @@ public class Main {
         int multipartFileStatus = Integer.parseInt(Objects.requireNonNull(GetProperties.getValueByKey("config.properties", "multipartFileStatus")));
         if (multipartFileStatus == 1) {
             //检查是否当前有未上传完全的大文件，如果有，则继续上传
-            MultipartFileHandler.continuteUploadMultipartFile(s3, Paths.get(fileFolderPath, GetProperties.getValueByKey("config.properties", "multipartFileName")));
+            MultipartFileHandler.continueUploadMultipartFile(s3, Paths.get(fileFolderPath, GetProperties.getValueByKey("config.properties", "multipartFileName")));
         }
 
         File file = new File(fileFolderPath);
@@ -110,7 +110,7 @@ public class Main {
                     } else if (multipartFileStatus == 1) {
                         //continue upload this big file.
                         if (f.getName().equals(GetProperties.getValueByKey("config.properties", "multipartFileName"))) {
-                            MultipartFileHandler.continuteUploadMultipartFile(s3, f.toPath());
+                            MultipartFileHandler.continueUploadMultipartFile(s3, f.toPath());
                         }
                     } else {
                         break;
@@ -184,19 +184,28 @@ public class Main {
 
                 if (!objs.getKey().equals(bigFileName)) {
                     if (!CalMD5.calculate(Paths.get(fileFolderPath, objs.getKey())).equals(objs.getETag())) {
-                        File localFile = new File(String.valueOf(Paths.get(fileFolderPath, objs.getKey())));
-                        if (localFile.lastModified() < objs.getLastModified().getTime()) {
-                            S3Object o = s3.getObject(bucketName, objs.getKey());
-                            S3ObjectInputStream s3is = o.getObjectContent();
-                            System.out.println("Updating " + objs.getKey() + " from bucket");
-                            FileOutputStream fos = new FileOutputStream(new File(String.valueOf(Paths.get(fileFolderPath, objs.getKey()))));
-                            byte[] read_buf = new byte[1024];
-                            int read_len = 0;
-                            while ((read_len = s3is.read(read_buf)) > 0) {
-                                fos.write(read_buf, 0, read_len);
+                        if(objs.getSize() < partSize){
+                            File localFile = new File(String.valueOf(Paths.get(fileFolderPath, objs.getKey())));
+                            if (localFile.lastModified() < objs.getLastModified().getTime()) {
+                                S3Object o = s3.getObject(bucketName, objs.getKey());
+                                S3ObjectInputStream s3is = o.getObjectContent();
+                                System.out.println("Updating " + objs.getKey() + " from bucket");
+                                FileOutputStream fos = new FileOutputStream(new File(String.valueOf(Paths.get(fileFolderPath, objs.getKey()))));
+                                byte[] read_buf = new byte[1024];
+                                int read_len = 0;
+                                while ((read_len = s3is.read(read_buf)) > 0) {
+                                    fos.write(read_buf, 0, read_len);
+                                }
+                                s3is.close();
+                                fos.close();
                             }
-                            s3is.close();
-                            fos.close();
+                        }else {
+                            if(Objects.equals(GetProperties.getValueByKey("config.properties", "multipartFileStatus"), "0")){
+                                MultipartFileHandler.firstDownload(s3,fileFolderPath, objs.getKey());
+                            }else {
+                                MultipartFileHandler.continueDownloadMultipartFile(s3,fileFolderPath, objs.getKey());
+                            }
+
                         }
                     }
                 }

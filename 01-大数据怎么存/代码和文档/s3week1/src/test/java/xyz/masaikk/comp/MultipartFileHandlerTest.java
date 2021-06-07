@@ -101,6 +101,6 @@ public class MultipartFileHandlerTest {
                 .withPathStyleAccessEnabled(true)
                 .build();
         Path bigFilePath = Paths.get(fileFolderPath,"big_file.txt");
-        MultipartFileHandler.continuteUploadMultipartFile(s3,bigFilePath);
+        MultipartFileHandler.continueUploadMultipartFile(s3,bigFilePath);
     }
 }
