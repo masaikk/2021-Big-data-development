@@ -1,0 +1,5 @@
+driver: org.apache.hive.jdbc.HiveDriver
+password: pass@bingo8
+url: jdbc:hive2://bigdata112.depts.bingosoft.net:22112/user08_db
+user: user08
+
