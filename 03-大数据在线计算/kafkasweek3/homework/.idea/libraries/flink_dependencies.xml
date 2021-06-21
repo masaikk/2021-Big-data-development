@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="flink dependencies">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/../../../flink dependencies" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/../../../flink dependencies" />
+    </SOURCES>
+    <jarDirectory url="file://$PROJECT_DIR$/../../../flink dependencies" recursive="false" />
+    <jarDirectory url="file://$PROJECT_DIR$/../../../flink dependencies" recursive="false" type="SOURCES" />
+  </library>
+</component>
